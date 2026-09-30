@@ -4,6 +4,7 @@ import javax.swing.*;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 public class Main{
     void main(){
@@ -38,7 +39,6 @@ public class Main{
         var fraudCounts = fraudAnalyzer.countFrauds();
         IO.println("1. Total de fraudes: " + fraudCounts);
 
-
         List<BigDecimal> topFraudsAmount = fraudAnalyzer.topFraudsAmount(3);
         IO.println("2. Top 3 Fraudes de Maior Valor: ");
         topFraudsAmount.stream().forEach(amount -> IO.println("%.2f".formatted(amount)));
@@ -53,6 +53,30 @@ public class Main{
         IO.println("5. Fraudes por Tipo: ");
         Map<TransactionType, Long> fraudsByType = fraudAnalyzer.getFraudsByType();
         fraudsByType.forEach((type, count) -> IO.println("- %s: %d".formatted(type, count)));
+
+        IO.println("--------------");
+        TransactionRepository transactionRepository;
+        transactionRepository = new TransactionListRepository(transactions);
+        String notExistingName = "C12345";
+        transactionRepository.findByOriginName(notExistingName)
+                .ifPresentOrElse(IO::println, () -> IO.println("Transação não encontrada para o cliente: " + notExistingName));
+        String existingName = "C1231006815";
+        transactionRepository.findByOriginName(existingName)
+                .ifPresentOrElse(IO::println, () -> IO.println("Transação não encontrada para o cliente: " + existingName));
+
+        long startTimeSearchingList = System.nanoTime();
+        String existingNameAtTheEnd = "C1868032458";
+        transactionRepository.findByOriginName(existingNameAtTheEnd)
+                .ifPresentOrElse(IO::println, () -> IO.println("Transação não encontrada para o cliente: " + existingNameAtTheEnd));
+        long endTimeSearchingList = System.nanoTime();
+        IO.println("Tempo de busca na List em ms: " + (endTimeSearchingList - startTimeSearchingList) / 1_000_000.0);
+
+        transactionRepository = new TransactionMapRepository(transactions);
+        long startTimeSearchingMap = System.nanoTime();
+        transactionRepository.findByOriginName(existingNameAtTheEnd)
+                .ifPresentOrElse(IO::println, () -> IO.println("Transação não encontrada para o cliente: " + existingNameAtTheEnd));
+        long endTimeSearchingMap = System.nanoTime();
+        IO.println("Tempo de busca no Map em ms: " + (endTimeSearchingMap - startTimeSearchingMap) / 1_000_000.0);
     }
 }
 
