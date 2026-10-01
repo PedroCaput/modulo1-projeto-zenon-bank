@@ -77,6 +77,8 @@ public class Main{
                 .ifPresentOrElse(IO::println, () -> IO.println("Transação não encontrada para o cliente: " + existingNameAtTheEnd));
         long endTimeSearchingMap = System.nanoTime();
         IO.println("Tempo de busca no Map em ms: " + (endTimeSearchingMap - startTimeSearchingMap) / 1_000_000.0);
+
+        IO.println("--------------");
     }
 }
 
