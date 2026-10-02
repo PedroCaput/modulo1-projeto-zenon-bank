@@ -4,7 +4,6 @@ import javax.swing.*;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 public class Main{
     void main(){
@@ -22,19 +21,19 @@ public class Main{
 
         IO.println(transaction1);
         IO.println(transaction2);
-        IO.println("--------------");
+        IO.println("<--------------->");
         var transactionIngestor = new TransactionIngestor();
         List<Transaction> transactions = transactionIngestor.read("data/PS_20174392719_1491204439457_log.csv");
 
         transactions.stream().limit(10).forEach(IO::println);
         //IO.println(transactions.size());
 
-        IO.println("--------------");
+        IO.println("<--------------->");
         List<Transaction> transactionsBadData = transactionIngestor.read("data/paysim_with_bad_data.csv");
         IO.println(transactionsBadData.size());
         transactionsBadData.stream().forEach(IO::println);
 
-        IO.println("--------------");
+        IO.println("<--------------->");
         var fraudAnalyzer = new FraudAnalyzer(transactions);
         var fraudCounts = fraudAnalyzer.countFrauds();
         IO.println("1. Total de fraudes: " + fraudCounts);
@@ -54,7 +53,7 @@ public class Main{
         Map<TransactionType, Long> fraudsByType = fraudAnalyzer.getFraudsByType();
         fraudsByType.forEach((type, count) -> IO.println("- %s: %d".formatted(type, count)));
 
-        IO.println("--------------");
+        IO.println("<--------------->");
         TransactionRepository transactionRepository;
         transactionRepository = new TransactionListRepository(transactions);
         String notExistingName = "C12345";
@@ -78,7 +77,7 @@ public class Main{
         long endTimeSearchingMap = System.nanoTime();
         IO.println("Tempo de busca no Map em ms: " + (endTimeSearchingMap - startTimeSearchingMap) / 1_000_000.0);
 
-        IO.println("--------------");
+        IO.println("<--------------->");
     }
 }
 
