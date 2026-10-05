@@ -8,12 +8,15 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Semaphore;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
 public class EfficientTransactionIngestor {
     //public static final int FRAUD_LIMIT = 10_000;
     public static final int LINE_BATCH_SIZE = 2_500;
+
+    private final Semaphore dbPermits = new Semaphore(10);
 
     public void readAsStream(String fileName, Consumer<Transaction> consumer) {
         Path path = Path.of(fileName);
@@ -33,7 +36,7 @@ public class EfficientTransactionIngestor {
     public void readAsBatch(String fileName, Consumer<List<Transaction>> batchConsumer) {
         Path path = Path.of(fileName);
         try (
-                ExecutorService executor = Executors.newFixedThreadPool(10);
+                ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
                 Stream<String> lines = Files.lines(path).skip(1);
         ) {
             var iterator = lines.iterator();
@@ -46,14 +49,26 @@ public class EfficientTransactionIngestor {
                 if(lineBatch.size() >= LINE_BATCH_SIZE){
                     IO.println("Executing batch ingestor...");
                     final List<String> currentLineBatch = List.copyOf(lineBatch);
-                    executor.submit( () -> executeBatch(currentLineBatch, batchConsumer));
+                    executor.submit( () -> {
+                        try {
+                            executeBatch(currentLineBatch, batchConsumer);
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                    });
                     lineBatch.clear();
                 }
             }
             if(!lineBatch.isEmpty()){
                 IO.println("Executing final batch");
                 final List<String> currentLineBatch = List.copyOf(lineBatch);
-                executor.submit( () -> executeBatch(currentLineBatch, batchConsumer));
+                executor.submit( () -> {
+                    try {
+                        executeBatch(currentLineBatch, batchConsumer);
+                    } catch (Exception e) {
+                        e.printStackTrace(); // TODO: criar logger
+                    }
+                });
                 lineBatch.clear();
             }
         } catch (Exception e) {
@@ -68,7 +83,16 @@ public class EfficientTransactionIngestor {
                 .filter(Optional::isPresent)
                 .map(Optional::get)
                 .toList();
-        batchConsumer.accept(transactionBatch);
+        try{
+            dbPermits.acquire();
+            try {
+                batchConsumer.accept(transactionBatch);
+            } finally {
+                dbPermits.release();
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     private Optional<Transaction> parseTransaction(String line) {
